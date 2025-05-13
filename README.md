@@ -249,7 +249,7 @@ Then on the second `dcanadillas-sec` cluster:
 nomad run -var datacenter=dcanadillas-sec peering/mesh-gateway-sec.hcl
 ```
 
-Now we can configure the peering from the steps defined [here](../peering/README.md).
+Now we can configure the peering from the steps defined [here](./peering/README.md).
 
 
 ## Exposing services from the second cluster to the first one
