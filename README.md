@@ -31,7 +31,7 @@ To deploy both clusters you can do it by following the next steps:
    git clone https://github.com/dcanadillas/consul-nomad-gcp $HOME/consul-nomad-peering/consul-nomad-gcp
    cd $HOME/consul-nomad-peering/consul-nomad-gcp
    ```
-3. Follow the instructions to build the Packer image first from the repo
+3. Follow the instructions to [build the Packer image](https://github.com/dcanadillas/consul-nomad-gcp#build-image) first from the repo
 4. Create the first cluster by using Terraform. Start with setting the variables:
    ```bash
    tee terraform.auto.dc1.tfvars << EOF
@@ -173,14 +173,16 @@ And we need to enable the intention from the API Gateway to the frontend service
 consul config write configs/front-intentions.hcl
 ```
 
-Now we should be able to reach the external API Gateway address:
+Now we should be able to reach the external API Gateway address.
 
-WIP: From the Terraform deployment we deployed a LB that should be accessible to the API Gateway backends. You can get the external IP of the Load Balancer from an output in your Terraform configuration (in this case in the first workspace execution):
+If you used the Terraform configuration, we deployed a load balancer to communicate to the API Gateway backends. You can get the external IP of the Load Balancer from an output in your Terraform (in this case in the first workspace execution):
 ```bash
 terraform output apigw_load_balancers
 ```
 
-I you put in a browser `http://<api_gw_load_balancer_ip>:8080/ui` you will see your services deployed and the connection that is possible rigth now:
+Load the following url in browser: `http://<api_gw_load_balancer_ip>:8080/ui`. 
+
+You will notice your services deployed and the working connections:
 * Your `front-service` service can connect to  `private-api` and `public-api` in the same cluster
 * `front-service` cannot communicate to `private-api` in the second cluster
 
@@ -294,8 +296,9 @@ $ nomad exec -task web -t -i $(nomad job status -json front-service | jq -r .[].
   "code": 200
 }
 ```
+> NOTE: If you receive a communication error from the mesh gateways, you need to check that the right policies are applied to both clusters and restart/redeploy the mesh gateways to check that policies are attached correctly to the Consul service token applied from the Nomad workload identity.
 
-If we reload the load balancer url of the API Gateway again (`http://<api_gw_load_balancer_ip>:8080/ui`) we will see that there are not red boxes, as all services can communicate between each other, including the `private-api` call in the secondary cluster from `front-service` in the first cluster. Cluster peering communication is working.
+If we reload the load balancer url of the API Gateway again (`http://<api_gw_load_balancer_ip>:8080/ui`) we will see that there are not red boxes, as all services can communicate between each other, including the `private-api` call in the secondary cluster from `front-service` in the first cluster. Cluster peering routing is working.
 
 ![fake-services-working](./img/fake-services-ok.png)
 
