@@ -50,16 +50,16 @@ job "my-api-gateway" {
       driver = "docker"
 
       config {
-        image = var.consul_image # image containing Consul
+        image   = var.consul_image # image containing Consul
         command = "/bin/sh"
         args = [
           "-c",
-         "consul connect envoy -gateway api -register -deregister-after-critical 10s -service ${NOMAD_JOB_NAME} -admin-bind 0.0.0.0:19000 -ignore-envoy-compatibility -bootstrap > ${NOMAD_ALLOC_DIR}/envoy_bootstrap.json"
+          "consul connect envoy -gateway api -register -deregister-after-critical 10s -service ${NOMAD_JOB_NAME} -admin-bind 0.0.0.0:19000 -ignore-envoy-compatibility -bootstrap > ${NOMAD_ALLOC_DIR}/envoy_bootstrap.json"
         ]
       }
 
       lifecycle {
-        hook = "prestart"
+        hook    = "prestart"
         sidecar = false
       }
 
@@ -78,42 +78,42 @@ job "my-api-gateway" {
         CONSUL_HTTP_SSL_VERIFY = "false"
       }
 
-#       template {
-#         destination = "secrets/certs/consul_ca.pem"
-#         env         = false
-#         change_mode = "restart"
-#         data        = <<EOF
-# {{- with nomadVar "nomad/jobs/my-api-gateway/gateway/setup" -}}
-# {{ .consul_cacert }}
-# {{- end -}}
-# EOF
-#       }
+      #       template {
+      #         destination = "secrets/certs/consul_ca.pem"
+      #         env         = false
+      #         change_mode = "restart"
+      #         data        = <<EOF
+      # {{- with nomadVar "nomad/jobs/my-api-gateway/gateway/setup" -}}
+      # {{ .consul_cacert }}
+      # {{- end -}}
+      # EOF
+      #       }
 
-#       template {
-#         destination = "secrets/certs/consul_client.pem"
-#         env         = false
-#         change_mode = "restart"
-#         data        = <<EOF
-# {{- with nomadVar "nomad/jobs/my-api-gateway/gateway/setup" -}}
-# {{ .consul_client_cert }}
-# {{- end -}}
-# EOF
-#       }
+      #       template {
+      #         destination = "secrets/certs/consul_client.pem"
+      #         env         = false
+      #         change_mode = "restart"
+      #         data        = <<EOF
+      # {{- with nomadVar "nomad/jobs/my-api-gateway/gateway/setup" -}}
+      # {{ .consul_client_cert }}
+      # {{- end -}}
+      # EOF
+      #       }
 
-#       template {
-#         destination = "secrets/certs/consul_client_key.pem"
-#         env         = false
-#         change_mode = "restart"
-#         data        = <<EOF
-# {{- with nomadVar "nomad/jobs/my-api-gateway/gateway/setup" -}}
-# {{ .consul_client_key }}
-# {{- end -}}
-# EOF
-#       }
+      #       template {
+      #         destination = "secrets/certs/consul_client_key.pem"
+      #         env         = false
+      #         change_mode = "restart"
+      #         data        = <<EOF
+      # {{- with nomadVar "nomad/jobs/my-api-gateway/gateway/setup" -}}
+      # {{ .consul_client_key }}
+      # {{- end -}}
+      # EOF
+      #       }
       template {
         destination = "owner"
-        env         =  false
-        data = "dcanadillas"
+        env         = false
+        data        = "dcanadillas"
       }
 
     }

@@ -139,9 +139,9 @@ Let's deploy first the Consul configurations for the applications (when doing pe
 consul config write configs/proxy-defaults.hcl
 ```
 
-Deploying backend services in one Nomad DC (the first `dcanadillas` one):
+Deploying backend services in one Nomad DC (the first `dcanadillas` one). For the backend services let's deploy 2 replicas per service, so we can also see in Nomad how the workloads are spread:
 ```bash
-nomad run -var datacenter=dcanadillas demo-fake-service/backend.nomad.hcl
+nomad run -var datacenter=dcanadillas -var public_replicas=2 -var private_replicas=2 demo-fake-service/backend.nomad.hcl
 nomad run -var datacenter=dcanadillas demo-fake-service/frontend.nomad.hcl
 ```
 
@@ -201,9 +201,12 @@ export NOMAD_ADDR="<second_cluster_nomad_addr>"
 export NOMAD_TOKEN="<second_cluster_nomad_token>"
 ```
 
-Now, let's deploy the backend services in the second cluster `dcanadillas-sec`:
+Now, let's deploy the backend services in the second cluster `dcanadillas-sec`. In this case we deploy only one replica per service:
 ```bash
-nomad run -var datacenter=dcanadillas-sec demo-fake-service/backend.nomad.hcl
+nomad run -var datacenter=dcanadillas-sec \
+ -var public_replicas=1 \
+ -var private_replicas=1 \
+ demo-fake-service/backend.nomad.hcl
 ```
 
 ### Configuring policies for the Mesh Gateways
@@ -239,17 +242,17 @@ consul config write -http-addr <first_consul_cluster_addr> peering/mesh.hcl
 consul config write -http-addr <secondary_consul_cluster_addr> peering/mesh.hcl
 ```
 
-Let's deploy the Mesh Gateways in both clusters.
+Let's deploy the Mesh Gateways in both clusters. We are going to use one Mesh Gateway job definition to deploy to both clusters, because we are using an attribute from the Nomad client to assing the tagged address in Consul. We are using GCP deployment example, so the attribute called `unique.platform.gce.network.<gcp_network>.external-ip.0` is used to assing the WAN address of the mesh gateway. When we deployed the Terraform configuration, the network name where the clusters are deployed is `<datacenter>-network`, so we can deploy the mesh gateway for each cluster as follows:
 
-First on the first `dcanadillas` Nomad datacenter:
-```bash
-nomad run -var datacenter=dcanadillas peering/mesh-gateway.hcl
-```
+* First on the first `dcanadillas` Nomad datacenter:
+  ```bash
+  nomad run -var datacenter=dcanadillas peering/mesh-gateway.hcl
+  ```
 
-Then on the second `dcanadillas-sec` cluster:
-```bash
-nomad run -var datacenter=dcanadillas-sec peering/mesh-gateway-sec.hcl
-```
+* Then on the second `dcanadillas-sec` cluster:
+  ```bash
+  nomad run -var datacenter=dcanadillas-sec peering/mesh-gateway.hcl
+  ```
 
 Now we can configure the peering from the steps defined [here](./peering/README.md).
 

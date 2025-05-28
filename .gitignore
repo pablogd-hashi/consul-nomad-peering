@@ -33,3 +33,4 @@ backend.tf
 
 # Ignoring the `old_backup` directory from old data
 old_backup/
+setup.sh

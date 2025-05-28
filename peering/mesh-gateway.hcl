@@ -3,6 +3,11 @@ variable "datacenter" {
   default = "dc1"
 }
 
+locals {
+  # The datacenter to deploy the mesh gateway in. This is because the GCP network used is called "<datacenter>-network".
+  wan_attribute = "$${attr.unique.platform.gce.network.${var.datacenter}-network.external-ip.0}"
+}
+
 job "mesh-gateway" {
   datacenters = [var.datacenter]
 
@@ -29,8 +34,10 @@ job "mesh-gateway" {
       port = "mesh_wan"
       # address = "${attr.unique.platform.gce.network.dcanadillas-network.external-ip.0}"
       tagged_addresses {
-        wan_ipv4 = "${attr.unique.platform.gce.network.dcanadillas-network.external-ip.0}"
-        wan = "${attr.unique.platform.gce.network.dcanadillas-network.external-ip.0}"
+        # wan_ipv4 = "${attr.unique.platform.gce.network.dcanadillas-network.external-ip.0}"
+        # wan = "${attr.unique.platform.gce.network.dcanadillas-network.external-ip.0}"
+        wan_ipv4 = "${local.wan_attribute}"
+        # wan = "${local.wan_attribute}"
       }
 
       connect {

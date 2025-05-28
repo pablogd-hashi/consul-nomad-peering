@@ -6,11 +6,19 @@ variable "datacenter" {
   type = string
   default = "dc1"
 }
+variable "replicas_private" {
+  type = number
+  default = 2
+}
+variable "replicas_public" {
+  type = number
+  default = 2
+}
 
 job "backend-services" {
   datacenters = [var.datacenter]
   group "public" {
-    count = 2
+    count = var.replicas_public
     network {
       mode = "bridge"
       port "public-api" {
@@ -43,13 +51,13 @@ job "backend-services" {
       env {
         PORT = "${NOMAD_PORT_public-api}"
         LISTEN_ADDR = "0.0.0.0:9090"
-        MESSAGE = "Hello World from Public API"
+        MESSAGE = "Hello World from Public API @${NOMAD_DC}"
         NAME = "Public_API@${NOMAD_DC}"
       }
     }
   }
   group "private" {
-    count = 2
+    count = var.replicas_private
     network {
       mode = "bridge"
       port "private-api" {
@@ -93,7 +101,7 @@ job "backend-services" {
       env {
         PORT = "9090"
         LISTEN_ADDR = "0.0.0.0:9090"
-        MESSAGE = "Hello World from Private API"
+        MESSAGE = "Hello World from Private API @${NOMAD_DC}"
         NAME = "Private_API@${NOMAD_DC}"
       }
     }
