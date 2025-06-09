@@ -139,13 +139,13 @@ Let's deploy first the Consul configurations for the applications (when doing pe
 consul config write configs/proxy-defaults.hcl
 ```
 
-Deploying backend services in one Nomad DC (the first `dcanadillas` one). For the backend services let's deploy 2 replicas per service, so we can also see in Nomad how the workloads are spread:
+Deploying backend services in one Nomad DC (the first `datacenter=hashistack-gcp` one). For the backend services let's deploy 2 replicas per service, so we can also see in Nomad how the workloads are spread:
 ```bash
-nomad run -var datacenter=dcanadillas -var public_replicas=2 -var private_replicas=2 demo-fake-service/backend.nomad.hcl
-nomad run -var datacenter=dcanadillas demo-fake-service/frontend.nomad.hcl
+nomad run -var datacenter=hashistack-gcp -var replicas_public=2 -var private_replicas=2 demo-fake-service/backend.nomad.hcl
+nomad run -var datacenter=hashistack-gcp demo-fake-service/frontend.nomad.hcl
 ```
 
-Let's configure intentions to make connectivity between front and back work in that cluster (`dcanadillas`):
+Let's configure intentions to make connectivity between front and back work in that cluster (`datacenter=hashistack-gcp`):
 ```bash
 consul config write configs/private-api-intentions.hcl
 consul config write configs/public-api-intentions.hcl
@@ -203,9 +203,9 @@ export NOMAD_TOKEN="<second_cluster_nomad_token>"
 
 Now, let's deploy the backend services in the second cluster `dcanadillas-sec`. In this case we deploy only one replica per service:
 ```bash
-nomad run -var datacenter=dcanadillas-sec \
- -var public_replicas=1 \
- -var private_replicas=1 \
+nomad run -var datacenter=hashistack-gcp-2 \
+ -var replicas_public=1 \
+ -var replicas_private=1 \
  demo-fake-service/backend.nomad.hcl
 ```
 
@@ -244,14 +244,14 @@ consul config write -http-addr <secondary_consul_cluster_addr> peering/mesh.hcl
 
 Let's deploy the Mesh Gateways in both clusters. We are going to use one Mesh Gateway job definition to deploy to both clusters, because we are using an attribute from the Nomad client to assing the tagged address in Consul. We are using GCP deployment example, so the attribute called `unique.platform.gce.network.<gcp_network>.external-ip.0` is used to assing the WAN address of the mesh gateway. When we deployed the Terraform configuration, the network name where the clusters are deployed is `<datacenter>-network`, so we can deploy the mesh gateway for each cluster as follows:
 
-* First on the first `dcanadillas` Nomad datacenter:
+* First on the first `hashistack-gcp` Nomad datacenter:
   ```bash
-  nomad run -var datacenter=dcanadillas peering/mesh-gateway.hcl
+  nomad run -var datacenter=hashistack-gcp peering/mesh-gateway.hcl
   ```
 
-* Then on the second `dcanadillas-sec` cluster:
+* Then on the second `hashistack-gcp-2` cluster:
   ```bash
-  nomad run -var datacenter=dcanadillas-sec peering/mesh-gateway.hcl
+  nomad run -var datacenter=hashistack-gcp-2 peering/mesh-gateway.hcl
   ```
 
 Now we can configure the peering from the steps defined [here](./peering/README.md).
@@ -264,27 +264,26 @@ Our example will connect the frontend in the following manner:
 * Frontend (DC1) --> Private API (DC1)
 * Frontend (DC1) --> Private API (DC2)
 
-Because our clusters are peered (default partition in DC1 to default partition in DC2), we should be able to route traffic from the Frontend service to the Private API service in the second cluster, just by using its virtual address `private-api.virtual.<name_of_peer>.peer.consul`. To do that we need first to export the service `private-api` from DC2 (we called it `dcanadillas-sec`) to DC1 (`dcanadillas`). This is done by executing the following in the second Consul cluster (`dcanadillas-sec`):
+Because our clusters are peered (default partition in DC1 to default partition in DC2), we should be able to route traffic from the Frontend service to the Private API service in the second cluster, just by using its virtual address `private-api.virtual.<name_of_peer>.peer.consul`. To do that we need first to export the service `private-api` from DC2 (we called it `hashistack-gcp-2`) to DC1 (`hashistack-gcp`). This is done by executing the following in the second Consul cluster (`hashistack-gcp-2`):
 ```bash
 consul config write peering/default-exported.hcl
 ```
 
-You should see the exported services from the `dcanadillas-sec` cluster:
+You should see the exported services from the `hashistack-gcp-2` cluster:
 ```bash
 $ consul services exported-services
-Service      Partition  Namespace  Consumer Peers       Consumer Partitions
-private-api  default    default    dcanadillas-default
-public-api   default    default    dcanadillas-default
+
 ```
 
-And now we need to create the intentions to allow traffic from the `front-service` in `dcanadillas` cluster (DC1) to `private-api` in `dcanadillas-sec` (DC2). This is executed in the second `dcanadillas-sec` cluster:
+And now we need to create the intentions to allow traffic from the `front-service` in `hashistack-gcp` cluster (DC1) to `private-api` in `hashistack-gcp-2` (DC2). This is executed in the second `hashistack-gcp-2` cluster:
+
 ```bash
 consul config write peering/private-api-intentions.hcl
 ```
 
-Check int the `dcanadillas` cluster that the `private-api` service is reachable from the `front-service` in its peered partition:
+Check int the `hashistack-gcp` cluster that the `private-api` service is reachable from the `front-service` in its peered partition:
 ```bash
-$ nomad exec -task web -t -i $(nomad job status -json front-service | jq -r .[].Allocations[0].ID) curl private-api.virtual.dcanadillas-sec-default.peer.consul
+$ nomad exec -task web -t -i $(nomad job status -json front-service | jq -r .[].Allocations[0].ID) curl private-api.virtual.hashistack-gcp-2-default.peer.consul
 {
   "name": "Private_API@dcanadillas-sec",
   "uri": "/",
@@ -318,28 +317,14 @@ And create the new intention **in the second cluster**:
 consul config write peering/public-api-intentions.hcl
 ```
 
-You can check in Consul UI in the first `dcanadillas` cluster that there is a Failover configured fo the peered cluster. If you go to `https://<CONSUL_HTTP_ADDR>//ui/dcanadillas/services/public-api/routing` in a browser, you will see the failover:
+You can check in Consul UI in the first `hashistack-gcp` cluster that there is a Failover configured fo the peered cluster. If you go to `https://<CONSUL_HTTP_ADDR>//ui/hashistack-gcp/services/public-api/routing` in a browser, you will see the failover:
 
 ![public-api-failover](./img/public-api-failover.png)
 
 You can also check the failover configuration in the Consul discovery chain:
 ```
 $ curl -ks $CONSUL_HTTP_ADDR/v1/discovery-chain/public-api -H "X-Consul-Token: $CONSUL_HTTP_TOKEN" | jq .Chain.Nodes
-{
-  "resolver:public-api.default.default.dcanadillas": {
-    "Type": "resolver",
-    "Name": "public-api.default.default.dcanadillas",
-    "Resolver": {
-      "ConnectTimeout": "15s",
-      "Target": "public-api.default.default.dcanadillas",
-      "Failover": {
-        "Targets": [
-          "public-api.default.default.external.dcanadillas-sec-default"
-        ]
-      }
-    }
-  }
-}
+
 ```
 
 If you delete the Nomad job from the first cluster:
@@ -353,7 +338,7 @@ You can check that you only lost connectivity with `private-api`, but not with `
 
 Recover the Nomad job for `backend-services` in the first cluster:
 ```bash
-nomad run -var datacenter=dcanadillas demo-fake-service/backend.nomad.hcl
+nomad run -var datacenter=hashistack-gcp demo-fake-service/backend.nomad.hcl
 ```
 
 And if you load the API Gateway url again you will find that services back to the initial connectivity.
@@ -363,7 +348,7 @@ And if you load the API Gateway url again you will find that services back to th
 In this case we will do automatic failover just by defining [Consul Sameness Groups](https://developer.hashicorp.com/consul/docs/reference/config-entry/sameness-group). 
 > NOTE: We need to delete the previous failover resolver and modify the intentions.
 
-Delete the failover that we created before from the first `dcanadillas` cluster:
+Delete the failover that we created before from the first `hashistack-gcp` cluster:
 ```bash
 consul config delete -filename peering/public-api-resolver.hcl
 ```
@@ -371,67 +356,27 @@ consul config delete -filename peering/public-api-resolver.hcl
 You can check now that there is no failover in the discovery chain:
 ```
 $ curl -ks $CONSUL_HTTP_ADDR/v1/discovery-chain/public-api -H "X-Consul-Token: $CONSUL_HTTP_TOKEN" | jq '.Chain.Nodes'
-{
-  "resolver:public-api.default.default.dcanadillas": {
-    "Type": "resolver",
-    "Name": "public-api.default.default.dcanadillas",
-    "Resolver": {
-      "ConnectTimeout": "5s",
-      "Default": true,
-      "Target": "public-api.default.default.dcanadillas"
-    }
-  }
-}
+
 ```
 
-Deploy the Sameness Groups in cluster DC1 (`dcanadillas`):
+Deploy the Sameness Groups in cluster DC1 (`hashistack-gcp`):
 ```bash
 consul config write peering/sameness-groups/sg-dc1.hcl
 ```
 
-And in cluster DC2 (`dcanadillas-sec`):
+And in cluster DC2 (`hashistack-gcp-2`):
 ```bash
 consul config write peering/sameness-groups/sg-dc2.hcl
 ```
 
-If you check the discovery chain, now you will see that the failover configuration is configured for your services to failover to the `dcanadillas-sec-default` peer:
+If you check the discovery chain, now you will see that the failover configuration is configured for your services to failover to the `hashistack-gcp-2-default` peer:
 ```
 $ curl -ks $CONSUL_HTTP_ADDR/v1/discovery-chain/public-api -H "X-Consul-Token: $CONSUL_HTTP_TOKEN" | jq '.Chain.Nodes'
-{
-  "resolver:public-api.default.default.dcanadillas": {
-    "Type": "resolver",
-    "Name": "public-api.default.default.dcanadillas",
-    "Resolver": {
-      "ConnectTimeout": "5s",
-      "Target": "public-api.default.default.dcanadillas",
-      "Failover": {
-        "Targets": [
-          "public-api.default.default.external.dcanadillas-sec-default"
-        ]
-      }
-    }
-  }
-}
 
  $ curl -ks $CONSUL_HTTP_ADDR/v1/discovery-chain/private-api -H "X-Consul-Token: $CONSUL_HTTP_TOKEN" | jq '.Chain.Nodes'
-{
-  "resolver:private-api.default.default.dcanadillas": {
-    "Type": "resolver",
-    "Name": "private-api.default.default.dcanadillas",
-    "Resolver": {
-      "ConnectTimeout": "5s",
-      "Target": "private-api.default.default.dcanadillas",
-      "Failover": {
-        "Targets": [
-          "private-api.default.default.external.dcanadillas-sec-default"
-        ]
-      }
-    }
-  }
-}
-```
 
-Now, we can control the failover services authorization with Consul intentions. So, if we want to allow the failover again for the `public-api` service in the second cluster (`dcanadillas-sec`), we need to modify the intention to allow connectivity from the sameness group (remember to execute this command to the second cluster):
+```
+Now, we can control the failover services authorization with Consul intentions. So, if we want to allow the failover again for the `public-api` service in the second cluster (`hashistack-gcp-2`), we need to modify the intention to allow connectivity from the sameness group (remember to execute this command to the second cluster):
 ```bash
 consul config write peering/sameness-groups/public-api-intentions-sg.hcl
 ```
