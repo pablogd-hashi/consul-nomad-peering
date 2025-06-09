@@ -63,7 +63,7 @@ job "front-service" {
         LISTEN_ADDR = "0.0.0.0:9090"
         MESSAGE = "Hello World fron Frontend V1 @${NOMAD_DC}"
         NAME = "web"
-        UPSTREAM_URIS = "http://public-api.virtual.consul:9090,http://private-api.virtual.consul:9090,http://private-api.virtual.dcanadillas-sec-default.peer.consul:9090"
+        UPSTREAM_URIS = "http://public-api.virtual.consul:9090,http://private-api.virtual.consul:9090,http://private-api.virtual.gcp-dc2-default.peer.consul:9090"
       }
     }
   }

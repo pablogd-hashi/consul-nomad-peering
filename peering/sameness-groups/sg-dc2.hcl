@@ -4,5 +4,5 @@ Partition                = "default"
 DefaultForFailover = true
 Members = [
     { Partition = "default" },
-    { Peer      = "dcanadillas-default" }
+    { Peer      = "hashistack-gcp-default" }
 ]

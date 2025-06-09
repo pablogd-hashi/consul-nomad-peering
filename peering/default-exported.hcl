@@ -6,7 +6,7 @@ Services = [
     Name      = "public-api"
     Consumers = [
         {
-            Peer  = "dcanadillas-default"
+            Peer  = "gcp-dc1-default"
         },
     ]
   },
@@ -14,7 +14,7 @@ Services = [
     Name      = "private-api"
     Consumers = [
         {
-            Peer = "dcanadillas-default"
+            Peer = "gcp-dc1-default"
         }
     ]
   }

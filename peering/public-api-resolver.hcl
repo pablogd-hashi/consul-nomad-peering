@@ -4,7 +4,7 @@ ConnectTimeout = "15s"
 Failover = {
   "*" = {
     Targets = [
-      {Peer = "dcanadillas-sec-default"}
+      {Peer = "gcp-dc2-default"}
     ]
   }
 }

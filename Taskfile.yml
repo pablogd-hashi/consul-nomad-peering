@@ -1,0 +1,88 @@
+version: '3'
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  setup-nomad-consul:
+    desc: Configure workload identity between Nomad and Consul (run in both clusters)
+    cmds:
+      - nomad setup consul -y
+
+  create-namespace:
+    desc: Create Nomad namespace 'ingress' for API Gateway (only in primary cluster)
+    cmds:
+      - |
+        nomad namespace apply \
+          -description "namespace for Consul API Gateways" \
+          ingress
+
+  create-binding-rule:
+    desc: Create ACL binding rule for API Gateway (only in primary cluster)
+    cmds:
+      - |
+        consul acl binding-rule create \
+          -method 'nomad-workloads' \
+          -description 'Nomad API gateway' \
+          -bind-type 'templated-policy' \
+          -bind-name 'builtin/api-gateway' \
+          -bind-vars 'Name=${value.nomad_job_id}' \
+          -selector '"nomad_service" not in value and value.nomad_namespace==ingress'
+
+  configure-nomad-clusters:
+    desc: Full Nomad + Consul setup (run individually per cluster)
+    cmds:
+      - task setup-nomad-consul
+
+  configure-primary-cluster:
+    desc: Full setup for primary cluster (workload identity + namespace + binding rule)
+    cmds:
+      - task setup-nomad-consul
+      - task create-namespace
+      - task create-binding-rule
+
+  deploy-api-gw:
+    desc: Deploy API Gateway job
+    cmds:
+      - nomad job run api-gw.nomad.hcl
+
+  deploy-tgw:
+    desc: Deploy TGW job
+    cmds:
+      - nomad job run tgw.nomad.hcl
+
+  register-httproute:
+    desc: Register HTTPRoute configuration
+    cmds:
+      - consul config write httproute.hcl
+
+  register-listener:
+    desc: Register listener configuration
+    cmds:
+      - consul config write listener.hcl
+
+  deploy-fake-service:
+    desc: Deploy fake service in cluster2
+    dir: demo-fake-service
+    cmds:
+      - nomad job run fake-service.nomad.hcl
+
+  deploy-all:
+    desc: Deploy all Nomad and Consul workloads
+    deps:
+      - deploy-api-gw
+      - deploy-tgw
+      - register-httproute
+      - register-listener
+      - deploy-fake-service
+
+  destroy-all:
+    desc: Stop all Nomad jobs and remove Consul configs
+    cmds:
+      - nomad job stop -purge api-gw || true
+      - nomad job stop -purge tgw || true
+      - nomad job stop -purge fake-service || true
+      - consul config delete -kind httproute -name api-gw || true
+      - consul config delete -kind listener -name api-gw || true

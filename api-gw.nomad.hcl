@@ -22,7 +22,7 @@ variable "namespace" {
 variable "datacenter" {
   description = "The datacenter to deploy the gateway in."
   type        = string
-  default     = "dc1"
+  default     = "gcp-dc1"
 }
 
 job "my-api-gateway" {
@@ -113,7 +113,7 @@ job "my-api-gateway" {
       template {
         destination = "owner"
         env         = false
-        data        = "dcanadillas"
+        data        = "pablod"
       }
 
     }

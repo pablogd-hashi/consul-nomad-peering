@@ -4,6 +4,6 @@ Sources = [
   {
     Name   = "front-service"
     Action = "allow"
-    Peer = "dcanadillas-default"
+    Peer = "gcp-dc1-default"
   }
 ]
