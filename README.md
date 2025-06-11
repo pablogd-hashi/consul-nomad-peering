@@ -42,8 +42,8 @@ To deploy both clusters you can do it by following the next steps:
    numclients = 2
    # One of the names that you should see from "gcloud iam service-accounts list --format="table(NAME)""
    gcp_sa = "<your_gcp_service_accont>"
-   cluster_name = "dcanadillas"
-   owner = "dcanadillas"
+   cluster_name = "hashi-hashistack-gcp"
+   owner = "pablogd"
    consul_license = "<your_Consul_license_string>"
    nomad_license = "<your_Nomad_license_string>"
    dns_zone = "<use_this_variable_if_you_have_a_dns_zone>"
@@ -73,8 +73,8 @@ To deploy both clusters you can do it by following the next steps:
    numclients = 1
    # One of the names that you should see from "gcloud iam service-accounts list --format="table(NAME)""
    gcp_sa = "<your_gcp_service_accont>"
-   cluster_name = "dcanadillas"
-   owner = "dcanadillas-sec"
+   cluster_name = "hashi-hashistack-gcp-2"
+   owner = "pablogd"
    consul_license = "<your_Consul_license_string>"
    nomad_license = "<your_Nomad_license_string>"
    dns_zone = "<use_this_variable_if_you_have_a_dns_zone>"
@@ -101,7 +101,7 @@ At this point you should have two different clusters where you are connected to 
 Now, clone this repo content and change to its directoy to continue to deploy the environment demo use case:
 
 ```bash
-git clone https://github.com/dcanadillas/consul-nomad-peering $HOME/consul-nomad-peering/demo-assets
+git clone https://github.com/pablogd/consul-nomad-peering $HOME/consul-nomad-peering/demo-assets
 cd $HOME/consul-nomad-peering/demo-assets
 ```
 
@@ -113,7 +113,7 @@ nomad setup consul -y
 ```
 > **IMPORTANT**: Previous command needs to be executed from both clusters, so do it from both terminals you configured before.
 
-Nomad namespace for the API gateway. We will create only in the first `dcanadillas` cluster a namespace for the API Gateway:
+Nomad namespace for the API gateway. We will create only in the first `hashistack-gcp` cluster a namespace for the API Gateway:
 ```bash
 nomad namespace apply \
   -description "namespace for Consul API Gateways" \
@@ -157,7 +157,7 @@ nomad exec -task web -t -i $(nomad job status -json front-service | jq -r .[].Al
 ```
 
 ## Deploying the API Gateway
-Let's deploy the API Gateway we have defined in the first cluster `dcanadillas`:
+Let's deploy the API Gateway we have defined in the first cluster `hashistack-gcp`:
 ```bash
 nomad run api-gw.nomad.hcl
 ```
@@ -201,7 +201,7 @@ export NOMAD_ADDR="<second_cluster_nomad_addr>"
 export NOMAD_TOKEN="<second_cluster_nomad_token>"
 ```
 
-Now, let's deploy the backend services in the second cluster `dcanadillas-sec`. In this case we deploy only one replica per service:
+Now, let's deploy the backend services in the second cluster `hashistack-gcp-2`. In this case we deploy only one replica per service:
 ```bash
 nomad run -var datacenter=hashistack-gcp-2 \
  -var replicas_public=1 \
@@ -284,19 +284,7 @@ consul config write peering/private-api-intentions.hcl
 Check int the `hashistack-gcp` cluster that the `private-api` service is reachable from the `front-service` in its peered partition:
 ```bash
 $ nomad exec -task web -t -i $(nomad job status -json front-service | jq -r .[].Allocations[0].ID) curl private-api.virtual.hashistack-gcp-2-default.peer.consul
-{
-  "name": "Private_API@dcanadillas-sec",
-  "uri": "/",
-  "type": "HTTP",
-  "ip_addresses": [
-    "172.26.64.6"
-  ],
-  "start_time": "2025-04-29T15:22:27.365802",
-  "end_time": "2025-04-29T15:22:27.365914",
-  "duration": "112.018µs",
-  "body": "Hello World from Private API",
-  "code": 200
-}
+
 ```
 > NOTE: If you receive a communication error from the mesh gateways, you need to check that the right policies are applied to both clusters and restart/redeploy the mesh gateways to check that policies are attached correctly to the Consul service token applied from the Nomad workload identity.
 
